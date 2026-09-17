@@ -18,6 +18,16 @@
 ```bash
 cd backend
 python -m venv venv
+.\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+Copy-Item .env.example .env
+```
 
+Update the PostgreSQL password in `backend/.env`, then create a database
+named `user_profile_db`.
+
+Start the backend:
+
+```bash
+python -m uvicorn app.main:app --reload --port 8000
+```
