@@ -77,7 +77,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount routes: Direct root level (as per specification) and versioned (/api/v1)
 app.include_router(auth_router, tags=["Authentication"])
 app.include_router(auth_router, prefix=settings.API_V1_STR, tags=["Authentication (v1)"])
 

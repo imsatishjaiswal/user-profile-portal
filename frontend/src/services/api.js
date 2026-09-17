@@ -5,6 +5,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -57,25 +58,11 @@ export const formatApiError = (err, defaultMessage = 'An unexpected error occurr
   return defaultMessage
 }
 
-// Attach Bearer JWT token if present in localStorage
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => Promise.reject(error)
-)
-
 // Intercept 401 Unauthorized responses to clear token automatically
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
       if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
         window.location.href = '/login'
       }

@@ -19,3 +19,10 @@ class User(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+
+
+class RevokedToken(Base):
+    __tablename__ = "revoked_tokens"
+
+    jti = Column(String(36), primary_key=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)

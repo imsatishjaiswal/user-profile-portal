@@ -19,8 +19,7 @@ export const Dashboard = () => {
 
   return (
     <div className="container py-5">
-      {/* Header Banner */}
-      <div
+         <div
         className="p-4 p-md-5 rounded-4 mb-4 text-white position-relative overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #0f2038 0%, #1b365d 60%, #0284c7 100%)' }}
       >

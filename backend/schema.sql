@@ -30,3 +30,10 @@ CREATE TRIGGER update_users_updated_at
 BEFORE UPDATE ON users
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TABLE IF NOT EXISTS revoked_tokens (
+    jti VARCHAR(36) PRIMARY KEY,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires_at ON revoked_tokens(expires_at);

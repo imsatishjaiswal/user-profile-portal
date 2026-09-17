@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import datetime, timezone
+
+import jwt
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, oauth2_scheme
+from app.core.config import settings
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.db.database import get_db
-from app.db.models import User
-from app.schemas.user import MessageResponse, Token, UserLogin, UserRegister, UserResponse
+from app.db.models import RevokedToken, User
+from app.schemas.user import LoginResponse, MessageResponse, UserLogin, UserRegister, UserResponse
 
 router = APIRouter()
 
@@ -58,8 +62,8 @@ def register_user(user_in: UserRegister, db: Session = Depends(get_db)):
 
 
 
-@router.post("/login", response_model=Token)
-def login_user(credentials: UserLogin, db: Session = Depends(get_db)):
+@router.post("/login", response_model=LoginResponse)
+def login_user(credentials: UserLogin, response: Response, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == credentials.email.lower()).first()
     if not user or not verify_password(credentials.password, user.password_hash):
         raise HTTPException(
@@ -74,7 +78,15 @@ def login_user(credentials: UserLogin, db: Session = Depends(get_db)):
         )
 
     access_token = create_access_token(data={"sub": str(user.id), "email": user.email})
-    return Token(access_token=access_token, user=UserResponse.model_validate(user))
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=settings.COOKIE_SECURE,
+        samesite="lax",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    return LoginResponse(user=UserResponse.model_validate(user))
 
 
 @router.get("/user/profile", response_model=UserResponse)
@@ -83,6 +95,21 @@ def get_user_profile(current_user: User = Depends(get_current_user)):
 
 
 @router.post("/logout", response_model=MessageResponse)
-def logout_user(current_user: User = Depends(get_current_user)):
-    # Client removes token from storage; server acknowledges successful logout session termination
+def logout_user(
+    response: Response,
+    token: str | None = Depends(oauth2_scheme),
+    access_token: str | None = Cookie(default=None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    token = access_token or token
+    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    db.add(
+        RevokedToken(
+            jti=payload["jti"],
+            expires_at=datetime.fromtimestamp(payload["exp"], tz=timezone.utc),
+        )
+    )
+    db.commit()
+    response.delete_cookie(key="access_token")
     return MessageResponse(message="Successfully logged out")
